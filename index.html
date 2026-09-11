@@ -55,14 +55,22 @@
 		.intro { max-width: 415px; margin: 0; color: var(--muted); font-size: 1.05rem; line-height: 1.55; }
 		.hero-meta { display: flex; align-items: center; gap: 18px; margin-top: 48px; color: var(--muted); font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; }
 		.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 5px rgba(216, 238, 97, .25); }
-		.weather-card { display: grid; grid-template-columns: auto 1fr; gap: 15px; align-items: center; width: min(100%, 330px); margin-top: 34px; padding: 16px 18px; background: var(--cream); border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--lime); }
+		.weather-card { display: grid; gap: 14px; width: min(100%, 390px); margin-top: 34px; padding: 16px 18px; background: var(--cream); border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--lime); }
+		.weather-current { display: grid; grid-template-columns: auto 1fr; gap: 15px; align-items: center; }
 		.weather-icon { min-width: 46px; font-size: 2.25rem; line-height: 1; text-align: center; }
 		.weather-label { margin: 0; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 		.weather-details { display: flex; align-items: baseline; gap: 9px; margin-top: 3px; }
 		.weather-temperature { font-size: 1.65rem; font-weight: 700; letter-spacing: -.06em; }
 		.weather-condition { color: var(--muted); font-size: .8rem; }
-		.weather-message { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.35; }
-		.weather-retry { grid-column: 1 / -1; justify-self: start; border: 0; border-bottom: 1px solid var(--ink); padding: 0 0 2px; color: var(--ink); background: transparent; font: inherit; font-size: .72rem; cursor: pointer; }
+		.forecast-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; border-top: 1px solid var(--line); padding-top: 13px; }
+		.forecast-day { min-width: 0; text-align: center; }
+		.forecast-name { display: block; overflow: hidden; color: var(--muted); font-size: .63rem; font-weight: 700; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+		.forecast-icon { display: block; margin: 6px 0 5px; font-size: 1.25rem; line-height: 1; }
+		.forecast-temperatures { display: flex; justify-content: center; gap: 4px; font-size: .69rem; }
+		.forecast-high { font-weight: 700; }
+		.forecast-low { color: var(--muted); }
+		.weather-message { margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.35; }
+		.weather-retry { justify-self: start; border: 0; border-bottom: 1px solid var(--ink); padding: 0 0 2px; color: var(--ink); background: transparent; font: inherit; font-size: .72rem; cursor: pointer; }
 		.weather-retry:hover { color: var(--coral); }
 
 		.hero-art { position: relative; width: min(100%, 460px); aspect-ratio: 1 / 1.08; justify-self: end; }
@@ -149,11 +157,14 @@
 				<p class="intro">I’m Jen, a designer making identities, digital experiences, and objects for people with something to say.</p>
 				<div class="hero-meta"><span class="dot" aria-hidden="true"></span><span>Available for select projects</span></div>
 				<div class="weather-card" id="weather-card" aria-live="polite">
-					<div class="weather-icon" id="weather-icon" aria-hidden="true">◌</div>
-					<div>
-						<p class="weather-label">Right where you are</p>
-						<div class="weather-details"><strong class="weather-temperature" id="weather-temperature">--°</strong><span class="weather-condition" id="weather-condition">Finding the forecast</span></div>
+					<div class="weather-current">
+						<div class="weather-icon" id="weather-icon" aria-hidden="true">◌</div>
+						<div>
+							<p class="weather-label">Right where you are</p>
+							<div class="weather-details"><strong class="weather-temperature" id="weather-temperature">--°</strong><span class="weather-condition" id="weather-condition">Finding the forecast</span></div>
+						</div>
 					</div>
+					<div class="forecast-grid" id="forecast-grid" aria-label="Five-day forecast"></div>
 					<p class="weather-message" id="weather-message">Allow location access to see your local weather.</p>
 					<button class="weather-retry" id="weather-retry" type="button" hidden>Try again</button>
 				</div>
@@ -208,6 +219,7 @@
 		const weatherIcon = document.getElementById('weather-icon');
 		const weatherTemperature = document.getElementById('weather-temperature');
 		const weatherCondition = document.getElementById('weather-condition');
+		const forecastGrid = document.getElementById('forecast-grid');
 		const weatherMessage = document.getElementById('weather-message');
 		const weatherRetry = document.getElementById('weather-retry');
 
@@ -234,10 +246,25 @@
 			weatherRetry.hidden = !showRetry;
 		}
 
+		function renderForecast(daily) {
+			forecastGrid.replaceChildren();
+			daily.time.forEach((date, index) => {
+				const condition = weatherType(daily.weather_code[index]);
+				const day = document.createElement('div');
+				day.className = 'forecast-day';
+				day.innerHTML = `
+					<span class="forecast-name">${index === 0 ? 'Today' : new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</span>
+					<span class="forecast-icon" aria-label="${condition.label}" role="img">${condition.icon}</span>
+					<span class="forecast-temperatures"><strong class="forecast-high">${Math.round(daily.temperature_2m_max[index])}°</strong><span class="forecast-low">${Math.round(daily.temperature_2m_min[index])}°</span></span>`;
+				forecastGrid.appendChild(day);
+			});
+		}
+
 		function loadWeather() {
 			weatherIcon.textContent = '◌';
 			weatherTemperature.textContent = '--°';
 			weatherCondition.textContent = 'Finding the forecast';
+			forecastGrid.replaceChildren();
 			setWeatherState('Allow location access to see your local weather.', false);
 
 			if (!navigator.geolocation) {
@@ -252,8 +279,10 @@
 						latitude: coords.latitude,
 						longitude: coords.longitude,
 						current: 'temperature_2m,weather_code',
+						daily: 'weather_code,temperature_2m_max,temperature_2m_min',
 						temperature_unit: 'fahrenheit',
-						forecast_days: '1'
+						forecast_days: '5',
+						timezone: 'auto'
 					});
 					const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
 					if (!response.ok) throw new Error('Weather request failed');
@@ -263,6 +292,7 @@
 					weatherIcon.textContent = condition.icon;
 					weatherTemperature.textContent = `${Math.round(current.temperature_2m)}°F`;
 					weatherCondition.textContent = condition.label;
+					renderForecast(data.daily);
 					setWeatherState('Current conditions near you', false);
 				} catch (error) {
 					weatherCondition.textContent = 'Unavailable';
